@@ -31,9 +31,6 @@ for i in range(num_hits):
     bonus = st.number_input(f"**Bonus Danno (%) per Attacco Normale {i+1}**", value=15.0) / 100
     bonus_dmg_per_hit.append(bonus)
 
-# Calcolo base
-mults = talent_multipliers[talent_lvl][:num_hits]
-res_multiplier = 1 + res_shred
 
 st.markdown("### 📈 Risultati Attacchi Normali")
 for i, mult in enumerate(mults):

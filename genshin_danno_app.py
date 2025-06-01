@@ -1,139 +1,101 @@
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import streamlit as st
+import math
 
-const TalentScaling = {
-  1: [44.5, 43.7, 54.9, 58.4, 73.9, 87.3, 103.0],
-  2: [47.6, 46.7, 58.7, 62.5, 79.1, 93.4, 110.2],
-  3: [51.6, 50.6, 63.7, 67.9, 85.9, 101.4, 119.7],
-  4: [56.3, 55.3, 69.7, 74.3, 94.0, 110.9, 131.0],
-  5: [59.4, 58.3, 73.5, 78.4, 99.2, 117.0, 138.2],
-  6: [62.9, 61.7, 77.8, 83.0, 105.1, 124.0, 146.4],
-  7: [68.5, 67.2, 84.8, 90.4, 114.5, 135.1, 159.5],
-  8: [74.1, 72.8, 91.8, 97.8, 124.0, 146.3, 172.6],
-  9: [79.8, 78.3, 98.9, 105.2, 133.4, 157.4, 185.7],
-  10: [85.9, 84.3, 106.5, 113.3, 143.8, 169.6, 199.9],
-};
+st.set_page_config(page_title="Genshin Damage Calculator", layout="centered")
+st.title("🔮 Genshin Impact - Damage Calculator")
 
-function calculateDamage(baseATK, multiplier, bonusDMG, critRate, critDMG, shred, resMult) {
-  const totalMultiplier = multiplier * (1 + bonusDMG + shred) * resMult;
-  const nonCrit = baseATK * totalMultiplier / 100;
-  const crit = nonCrit * (1 + critDMG);
-  const avg = (crit * critRate + nonCrit * (1 - critRate));
-  return { nonCrit, crit, avg };
+st.markdown("""
+Inserisci le statistiche del personaggio per calcolare il danno di attacchi normali, critici, medi e delle reazioni elementali.
+""")
+
+# --- Input statistiche base ---
+base_atk = st.number_input("**ATK Totale** (Base + Flat)", value=2253)
+anemo_dmg_bonus = st.number_input("**Bonus Danno Anemo (%)**", value=15.0) / 100
+crit_rate = st.number_input("**Tasso di CRIT (%)**", value=61.6) / 100
+crit_dmg = st.number_input("**Danno CRIT (%)**", value=141.0) / 100
+em = st.number_input("**Maestria Elementale (EM)**", value=98)
+res_shred = st.number_input("**Shred Resistenza Elementale (%)**", value=0.0) / 100
+
+talent_lvl = st.selectbox("**Livello Talento Normale**", [1,2,3,4,5,6,7,8,9,10])
+
+talent_multipliers = {
+    1: [44.5, 43.5, 54.2, 65.5, 64.2, 82.0, 104.1],
+    2: [47.2, 46.1, 57.4, 69.4, 68.0, 86.9, 110.4],
+    3: [50.0, 48.9, 61.0, 73.7, 72.3, 92.3, 117.3],
+    4: [53.4, 52.2, 65.1, 78.6, 77.1, 98.4, 125.1],
+    5: [56.1, 54.9, 68.3, 82.5, 81.0, 103.3, 131.4],
+    6: [58.9, 57.7, 71.6, 86.5, 84.9, 108.3, 137.8],
+    7: [62.3, 61.0, 75.6, 91.3, 89.7, 114.3, 145.6],
+    8: [65.7, 64.3, 79.6, 96.1, 94.5, 120.2, 153.4],
+    9: [69.0, 67.6, 83.7, 100.9, 99.2, 126.2, 161.2],
+    10: [72.4, 71.0, 87.7, 105.7, 104.0, 132.2, 169.0],
 }
 
-function calculateReaction(baseDMG, EM, type) {
-  const EM_bonus = (2.78 * EM) / (1400 + EM);
-  const multiplier = {
-    swirl: 1.2,
-    vaporize: 1.5,
-    melt: 2.0,
-    overload: 4.0,
-    superconduct: 1.0,
-    electrocharged: 1.2,
-    burning: 0.25,
-    burgeon: 3.0,
-    bloom: 2.0,
-    hyperbloom: 3.0,
-    aggravate: 1.15,
-    spread: 1.25,
-  }[type] || 1;
-  return baseDMG * multiplier * (1 + EM_bonus);
+num_hits = st.selectbox("**Numero di Attacchi Normali da Calcolare**", [1,2,3,4,5,6,7])
+
+# Calcolo base
+mults = talent_multipliers[talent_lvl][:num_hits]
+dmg_results = []
+res_multiplier = 1 + res_shred
+bonus_multiplier = 1 + anemo_dmg_bonus
+
+for i, mult in enumerate(mults, 1):
+    base = base_atk * (mult / 100) * bonus_multiplier * res_multiplier
+    crit = base * (1 + crit_dmg)
+    avg = base * (1 + crit_rate * crit_dmg)
+    dmg_results.append((i, base, crit, avg))
+
+st.markdown("### 📈 Risultati Attacchi Normali")
+for i, base, crit, avg in dmg_results:
+    st.write(f"**Attacco Normale {i}:**")
+    st.write(f"- Danno NON critico: `{base:.1f}`")
+    st.write(f"- Danno CRITICO: `{crit:.1f}`")
+    st.write(f"- Danno MEDIO: `{avg:.1f}`")
+
+# --- Reazioni Elementali ---
+st.markdown("---")
+st.markdown("### 🌪️ Calcolo Reazioni Elementali (Swirl, Overload, Melt, Vaporize, ecc.)")
+
+reaction_type = st.selectbox("Tipo di Reazione", [
+    "Swirl (Dispersione)",
+    "Overloaded (Sovraccarico)",
+    "Superconduct (Superconduzione)",
+    "Electro-Charged",
+    "Burning",
+    "Bloom",
+    "Vaporize (x1.5)",
+    "Vaporize (x2.0)",
+    "Melt (x1.5)",
+    "Melt (x2.0)"
+])
+
+# Reazioni amplificate vs trasformative
+transformative_base = {
+    "Swirl (Dispersione)": 1294,
+    "Overloaded (Sovraccarico)": 2041,
+    "Superconduct (Superconduzione)": 408,
+    "Electro-Charged": 1220,
+    "Burning": 1220,
+    "Bloom": 2039
 }
 
-export default function GenshinDmgCalc() {
-  const [baseATK, setBaseATK] = useState(2000);
-  const [bonusDMG, setBonusDMG] = useState(0.466);
-  const [critRate, setCritRate] = useState(0.616);
-  const [critDMG, setCritDMG] = useState(1.41);
-  const [talentLevel, setTalentLevel] = useState("10");
-  const [enemyShred, setEnemyShred] = useState(0);
-  const [resMult, setResMult] = useState(0.9);
-  const [EM, setEM] = useState(100);
-  const [reactionType, setReactionType] = useState("swirl");
-  const [numAttacks, setNumAttacks] = useState(3);
-
-  const multipliers = TalentScaling[parseInt(talentLevel)].slice(0, numAttacks);
-
-  const results = multipliers.map((multi, i) => {
-    const dmg = calculateDamage(baseATK, multi, bonusDMG, critRate, critDMG, enemyShred, resMult);
-    const reaction = calculateReaction(dmg.avg, EM, reactionType);
-    return { i: i + 1, ...dmg, reaction };
-  });
-
-  return (
-    <div className="grid gap-4 p-4">
-      <Card>
-        <CardContent className="grid gap-2">
-          <Label>Base ATK</Label>
-          <Input type="number" value={baseATK} onChange={e => setBaseATK(+e.target.value)} />
-
-          <Label>% Bonus DMG</Label>
-          <Input type="number" step="0.01" value={bonusDMG} onChange={e => setBonusDMG(+e.target.value)} />
-
-          <Label>CRIT Rate</Label>
-          <Input type="number" step="0.01" value={critRate} onChange={e => setCritRate(+e.target.value)} />
-
-          <Label>CRIT DMG</Label>
-          <Input type="number" step="0.01" value={critDMG} onChange={e => setCritDMG(+e.target.value)} />
-
-          <Label>Talent Level</Label>
-          <Select value={talentLevel} onValueChange={setTalentLevel}>
-            <SelectTrigger><SelectValue placeholder="Talent Level" /></SelectTrigger>
-            <SelectContent>
-              {[...Array(10)].map((_, i) => (
-                <SelectItem key={i} value={(i + 1).toString()}>{i + 1}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Label>Enemy RES Multiplier</Label>
-          <Input type="number" step="0.01" value={resMult} onChange={e => setResMult(+e.target.value)} />
-
-          <Label>Elemental Shred (decimal)</Label>
-          <Input type="number" step="0.01" value={enemyShred} onChange={e => setEnemyShred(+e.target.value)} />
-
-          <Label>Elemental Mastery</Label>
-          <Input type="number" value={EM} onChange={e => setEM(+e.target.value)} />
-
-          <Label>Tipo Reazione</Label>
-          <Select value={reactionType} onValueChange={setReactionType}>
-            <SelectTrigger><SelectValue placeholder="Tipo Reazione" /></SelectTrigger>
-            <SelectContent>
-              {Object.keys({
-                swirl: 1, vaporize: 1, melt: 1, overload: 1, superconduct: 1, electrocharged: 1, burning: 1, burgeon: 1, bloom: 1, hyperbloom: 1, aggravate: 1, spread: 1,
-              }).map(type => (
-                <SelectItem key={type} value={type}>{type}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Label>Numero attacchi normali</Label>
-          <Select value={numAttacks.toString()} onValueChange={val => setNumAttacks(parseInt(val))}>
-            <SelectTrigger><SelectValue placeholder="Numero attacchi" /></SelectTrigger>
-            <SelectContent>
-              {[...Array(7)].map((_, i) => (
-                <SelectItem key={i} value={(i + 1).toString()}>{i + 1}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      {results.map(({ i, nonCrit, crit, avg, reaction }) => (
-        <Card key={i}>
-          <CardContent className="p-4">
-            <h3 className="font-bold">Attacco Normale {i}</h3>
-            <p>Danno Non Critico: {nonCrit.toFixed(1)}</p>
-            <p>Danno Critico: {crit.toFixed(1)}</p>
-            <p>Danno Medio: {avg.toFixed(1)}</p>
-            <p>Danno con Reazione ({reactionType}): {reaction.toFixed(1)}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+amp_multipliers = {
+    "Vaporize (x1.5)": 1.5,
+    "Vaporize (x2.0)": 2.0,
+    "Melt (x1.5)": 1.5,
+    "Melt (x2.0)": 2.0
 }
+
+if reaction_type in transformative_base:
+    base = transformative_base[reaction_type]
+    reaction_bonus = (16 * em) / (2000 + em)
+    total = base * (1 + reaction_bonus) * res_multiplier
+    st.write(f"**Danno da {reaction_type}:** `{total:.1f}`")
+elif reaction_type in amp_multipliers:
+    amplif = amp_multipliers[reaction_type]
+    base = base_atk * bonus_multiplier * res_multiplier
+    reaction_bonus = 1 + ((2.78 * em) / (1400 + em))
+    total = base * amplif * reaction_bonus
+    st.write(f"**Danno da {reaction_type}:** `{total:.1f}`")
+else:
+    st.write("Errore: reazione non supportata.")

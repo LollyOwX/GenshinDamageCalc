@@ -102,4 +102,4 @@ if view_option == "Con Reazioni Elementali":
         total = base * amplif * reaction_bonus
         st.write(f"**Danno da {reaction_type}:** `{total:.1f}`")
     else:
-        st.write("Er
+        st.write("Errore: reazione non supportata.")

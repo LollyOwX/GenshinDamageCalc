@@ -5,7 +5,7 @@ st.set_page_config(page_title="Genshin Damage Calculator", layout="centered")
 st.title("🔮 Genshin Impact - Damage Calculator")
 
 st.markdown("""
-Inserisci le statistiche del personaggio per calcolare il danno di attacchi normali, critici, medi e delle reazioni elementali.
+Inserisci le statistiche del personaggio per calcolare il danno di attacchi normali, critici, medi, attacchi caricati, burst e delle reazioni elementali.
 """)
 
 # --- Input statistiche base ---
@@ -16,6 +16,8 @@ em = st.number_input("**Maestria Elementale (EM)**", value=98)
 res_shred = st.number_input("**Shred Resistenza Elementale (%)**", value=0.0) / 100
 
 talent_lvl = st.selectbox("**Livello Talento Normale**", [1,2,3,4,5,6,7,8,9,10])
+talent_burst_lvl = st.selectbox("**Livello Talento Elemental Burst**", [1,2,3,4,5,6,7,8,9,10])
+talent_charged_lvl = st.selectbox("**Livello Talento Attacco Caricato**", [1,2,3,4,5,6,7,8,9,10])
 
 view_option = st.radio("**Visualizzazione Danno**", ["Senza Reazioni Elementali", "Con Reazioni Elementali"])
 
@@ -32,6 +34,32 @@ talent_multipliers = {
     8: [65.7, 64.3, 79.6, 96.1, 94.5, 120.2, 153.4],
     9: [69.0, 67.6, 83.7, 100.9, 99.2, 126.2, 161.2],
     10: [72.4, 71.0, 87.7, 105.7, 104.0, 132.2, 169.0],
+}
+
+burst_multipliers = {
+    1: 245,
+    2: 263,
+    3: 281,
+    4: 305,
+    5: 323,
+    6: 341,
+    7: 366,
+    8: 391,
+    9: 416,
+    10: 441
+}
+
+charged_multipliers = {
+    1: 120,
+    2: 129,
+    3: 138,
+    4: 150,
+    5: 159,
+    6: 168,
+    7: 180,
+    8: 192,
+    9: 204,
+    10: 216
 }
 
 num_hits = st.selectbox("**Numero di Attacchi Normali da Calcolare**", [1,2,3,4,5,6,7])
@@ -57,6 +85,26 @@ for i, mult in enumerate(mults):
     st.write(f"- Danno CRITICO: `{crit:.1f}`")
     st.write(f"- Danno MEDIO: `{avg:.1f}`")
 
+# --- Attacco Caricato ---
+st.markdown("### ⚔️ Attacco Caricato")
+charged_bonus = st.number_input("**Bonus Danno Attacco Caricato (%)**", value=15.0) / 100
+charged_base = base_atk * (charged_multipliers[talent_charged_lvl] / 100) * (1 + charged_bonus) * res_multiplier
+charged_crit = charged_base * (1 + crit_dmg)
+charged_avg = charged_base * (1 + crit_rate * crit_dmg)
+st.write(f"- Danno NON critico: `{charged_base:.1f}`")
+st.write(f"- Danno CRITICO: `{charged_crit:.1f}`")
+st.write(f"- Danno MEDIO: `{charged_avg:.1f}`")
+
+# --- Elemental Burst ---
+st.markdown("### 💥 Elemental Burst")
+burst_bonus = st.number_input("**Bonus Danno Elemental Burst (%)**", value=15.0) / 100
+burst_base = base_atk * (burst_multipliers[talent_burst_lvl] / 100) * (1 + burst_bonus) * res_multiplier
+burst_crit = burst_base * (1 + crit_dmg)
+burst_avg = burst_base * (1 + crit_rate * crit_dmg)
+st.write(f"- Danno NON critico: `{burst_base:.1f}`")
+st.write(f"- Danno CRITICO: `{burst_crit:.1f}`")
+st.write(f"- Danno MEDIO: `{burst_avg:.1f}`")
+
 # --- Sezione Reazioni Elementali ---
 if view_option == "Con Reazioni Elementali":
     st.markdown("---")
@@ -71,8 +119,6 @@ if view_option == "Con Reazioni Elementali":
         "Bloom",
         "Hyperbloom",
         "Burgeon",
-        "Electro-Charged",
-        "Burning",
         "Vaporize (x1.5)",
         "Vaporize (x2.0)",
         "Melt (x1.5)",
@@ -110,7 +156,6 @@ if view_option == "Con Reazioni Elementali":
         st.write(f"**Danno da {reaction_type}:** `{total:.1f}`")
     elif reaction_type in amp_multipliers:
         amplif = amp_multipliers[reaction_type]
-        # usare la media dei bonus danno se più attacchi
         avg_bonus = sum(bonus_dmg_per_hit) / num_hits
         base = base_atk * (1 + avg_bonus) * res_multiplier
         reaction_bonus = 1 + ((2.78 * em) / (1400 + em))
